@@ -6,7 +6,7 @@ import { MemoryStore } from './store.js';
 test('health returns ok', async () => {
   const app = buildApp(new MemoryStore());
   const res = await app.inject({ method: 'GET', url: '/health' });
-  assert.equal(res.statusCode, 201);
+  assert.equal(res.statusCode, 200);
   assert.deepEqual(res.json(), { status: 'ok' });
 });
 
