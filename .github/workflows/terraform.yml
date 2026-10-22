@@ -36,7 +36,7 @@ jobs:
       - name: Plan
         run: terraform plan -input=false -lock=false -no-color | tee plan.txt
       - name: Show the plan on the run page
-        if: always()
+        if: always() && hashFiles('infra/plan.txt') != ''
         run: |
           {
             echo '## Terraform plan'
