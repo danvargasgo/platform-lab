@@ -1,0 +1,42 @@
+name: Terraform plan
+
+on:
+  pull_request:
+    paths:
+      - infra/**
+      - .github/workflows/terraform.yml
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_VAR_my_ip: ${{ vars.MY_IP }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform fmt -check -recursive
+      - run: terraform init -input=false
+      - run: terraform validate
+      - name: Plan
+        run: terraform plan -input=false -lock=false -no-color | tee plan.txt
+      - name: Show the plan on the run page
+        if: always() && hashFiles('infra/plan.txt') != ''
+        run: |
+          {
+            echo '## Terraform plan'
+            echo '```'
+            tail -n 80 plan.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

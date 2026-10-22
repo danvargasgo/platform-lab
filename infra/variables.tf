@@ -3,11 +3,6 @@ variable "region" {
   default = "us-east-1"
 }
 
-variable "profile" {
-  type    = string
-  default = "lab"
-}
-
 variable "my_ip" {
   type        = string
   description = "Your public IPv4 address, without a mask. Only this address can reach the app on port 3000."
@@ -22,4 +17,24 @@ variable "running" {
 variable "image_tag" {
   type    = string
   default = "v1"
+}
+
+variable "github_owner" {
+  type    = string
+  default = "danvargasgo"
+}
+
+variable "github_owner_id" {
+  type    = string
+  default = "55603131"
+}
+
+variable "github_repo_name" {
+  type    = string
+  default = "platform-lab"
+}
+
+variable "github_repo_id" {
+  type    = string
+  default = "1423603442"
 }
