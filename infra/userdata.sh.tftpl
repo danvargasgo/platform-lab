@@ -1,0 +1,13 @@
+#!/bin/bash
+set -euo pipefail
+dnf install -y docker jq
+systemctl enable --now docker
+aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${registry_host}
+SECRET=$(aws secretsmanager get-secret-value --region ${region} --secret-id ${secret_arn} --query SecretString --output text)
+DBUSER=$(echo "$SECRET" | jq -r .username)
+RAW=$(echo "$SECRET" | jq -r .password)
+ENC=$(jq -rn --arg p "$RAW" '$p|@uri')
+DBURL="postgres://$DBUSER:$ENC@${db_host}:5432/lab?sslmode=no-verify"
+docker run -d --name api --restart unless-stopped -p 3000:3000 -e DATABASE_URL="$DBURL" ${image}
+sleep 5
+docker run -d --name worker --restart unless-stopped -e DATABASE_URL="$DBURL" ${image} node dist/worker.js
