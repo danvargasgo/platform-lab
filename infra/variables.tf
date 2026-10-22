@@ -19,7 +19,22 @@ variable "image_tag" {
   default = "v1"
 }
 
-variable "github_repo" {
+variable "github_owner" {
   type    = string
-  default = "danvargasgo/platform-lab"
+  default = "danvargasgo"
+}
+
+variable "github_owner_id" {
+  type    = string
+  default = "55603131"
+}
+
+variable "github_repo_name" {
+  type    = string
+  default = "platform-lab"
+}
+
+variable "github_repo_id" {
+  type    = string
+  default = "1423603442"
 }

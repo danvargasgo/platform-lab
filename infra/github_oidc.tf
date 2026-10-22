@@ -3,6 +3,12 @@ resource "aws_iam_openid_connect_provider" "github" {
   client_id_list = ["sts.amazonaws.com"]
 }
 
+# GitHub puts immutable numeric ids in the token subject, so a deleted and
+# recreated repository with the same name cannot assume this role.
+locals {
+  gha_subject = "repo:${var.github_owner}@${var.github_owner_id}/${var.github_repo_name}@${var.github_repo_id}"
+}
+
 # Stage 1: pull requests may assume a read only role to run terraform plan.
 data "aws_iam_policy_document" "gha_plan_trust" {
   statement {
@@ -22,7 +28,7 @@ data "aws_iam_policy_document" "gha_plan_trust" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repo}:pull_request"]
+      values   = ["${local.gha_subject}:pull_request"]
     }
   }
 }
