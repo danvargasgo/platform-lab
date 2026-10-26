@@ -1,0 +1,44 @@
+image:
+  repository: platform-lab
+  tag: dev
+  pullPolicy: IfNotPresent
+
+# Created outside the chart by k8s/create-secrets.sh, so no password ever lands in git or in Helm's release history.
+databaseSecret: platform-lab-db
+
+api:
+  replicas: 2
+  resources:
+    requests:
+      cpu: 50m
+      memory: 96Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 50
+
+worker:
+  replicas: 3
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 192Mi
+
+# Turn this off when the app points at a managed database such as RDS.
+postgres:
+  enabled: true
+  image: postgres:16-alpine
+  storage: 1Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
