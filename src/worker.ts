@@ -17,7 +17,14 @@ for (const signal of ['SIGTERM', 'SIGINT'] as const) {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 while (running) {
-  const job = await store.claimNext();
+  let job;
+  try {
+    job = await store.claimNext();
+  } catch (err) {
+    console.error(JSON.stringify({ msg: 'claim failed', error: (err as Error).message }));
+    await sleep(2000);
+    continue;
+  }
   if (!job) {
     await sleep(1000);
     continue;

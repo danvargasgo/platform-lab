@@ -51,18 +51,44 @@ export class PgStore implements JobStore {
 
   constructor(connectionString: string) {
     this.pool = new pg.Pool({ connectionString, max: 5 });
+    // An idle connection dropping (database restarted) emits 'error'. Unhandled, it kills the process.
+    this.pool.on('error', (err) => {
+      console.error(JSON.stringify({ msg: 'pool error', error: err.message }));
+    });
   }
 
-  async init() {
-    await this.pool.query(`
-      CREATE TABLE IF NOT EXISTS jobs (
-        id SERIAL PRIMARY KEY,
-        payload JSONB NOT NULL,
-        status TEXT NOT NULL DEFAULT 'queued',
-        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-      )
-    `);
+  // The database may not be reachable yet, so wait for it instead of crashing.
+  async init(attempts = 30, delayMs = 2000) {
+    for (let i = 1; ; i++) {
+      try {
+        await this.createTable();
+        return;
+      } catch (err) {
+        if (i >= attempts) throw err;
+        console.error(JSON.stringify({ msg: 'database not ready', attempt: i, error: (err as Error).message }));
+        await new Promise((r) => setTimeout(r, delayMs));
+      }
+    }
+  }
+
+  // The advisory lock stops pods that start together from racing on CREATE TABLE.
+  private async createTable() {
+    const client = await this.pool.connect();
+    try {
+      await client.query('SELECT pg_advisory_lock(727274)');
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS jobs (
+          id SERIAL PRIMARY KEY,
+          payload JSONB NOT NULL,
+          status TEXT NOT NULL DEFAULT 'queued',
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+      `);
+    } finally {
+      await client.query('SELECT pg_advisory_unlock(727274)').catch(() => {});
+      client.release();
+    }
   }
 
   async ping() {
