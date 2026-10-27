@@ -1,0 +1,57 @@
+name: Kubernetes
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  chart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+      - run: helm lint helm/platform-lab
+
+      # A throwaway cluster inside the runner. Nothing outside GitHub is touched.
+      - uses: helm/kind-action@v1
+        with:
+          cluster_name: ci
+
+      - name: Build the image and load it into the cluster
+        run: |
+          docker build -t platform-lab:ci .
+          kind load docker-image platform-lab:ci --name ci
+
+      - name: Install the chart
+        run: |
+          kubectl create namespace lab-ci
+          sh k8s/create-secrets.sh lab-ci
+          # No metrics-server or Prometheus in this cluster, so those pieces stay off.
+          helm install platform helm/platform-lab -n lab-ci --wait --timeout 4m \
+            --set image.tag=ci \
+            --set api.autoscaling.enabled=false \
+            --set metrics.serviceMonitor.enabled=false \
+            --set worker.replicas=2
+
+      - name: Smoke test
+        run: |
+          kubectl -n lab-ci port-forward svc/api 8080:80 &
+          sleep 3
+          scripts/smoke-test.sh
+
+      - name: Upgrade and roll back
+        run: |
+          helm upgrade platform helm/platform-lab -n lab-ci --reuse-values --set worker.replicas=3 --wait --timeout 3m
+          test "$(kubectl -n lab-ci get deployment worker -o jsonpath='{.status.readyReplicas}')" = "3"
+          helm rollback platform 1 -n lab-ci --wait --timeout 3m
+          test "$(kubectl -n lab-ci get deployment worker -o jsonpath='{.status.readyReplicas}')" = "2"
+
+      - name: Show what went wrong
+        if: failure()
+        run: |
+          kubectl -n lab-ci get pods -o wide
+          kubectl -n lab-ci describe pods
+          kubectl -n lab-ci logs -l app=api --tail=50 --prefix
+          kubectl -n lab-ci logs -l app=worker --tail=50 --prefix
