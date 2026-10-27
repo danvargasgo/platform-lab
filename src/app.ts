@@ -1,8 +1,11 @@
 import Fastify from 'fastify';
+import { registerMetrics } from './metrics.js';
 import type { JobStore } from './store.js';
 
 export function buildApp(store: JobStore) {
   const app = Fastify({ logger: process.env.NODE_ENV !== 'test' });
+
+  registerMetrics(app);
 
   // Liveness: the process is up. Kubernetes restarts the pod if this fails.
   app.get('/health', async () => ({ status: 'ok' }));

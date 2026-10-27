@@ -21,6 +21,14 @@ api:
     maxReplicas: 6
     targetCPUUtilizationPercentage: 50
 
+# Needs the Prometheus Operator CRDs, so it is skipped on clusters without them.
+metrics:
+  serviceMonitor:
+    enabled: true
+    # kube-prometheus-stack only picks up monitors that carry its release label.
+    releaseLabel: monitoring
+    interval: 15s
+
 worker:
   replicas: 3
   resources:

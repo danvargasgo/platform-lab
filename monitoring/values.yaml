@@ -1,0 +1,28 @@
+# Trimmed for a local kind cluster. Not production settings.
+alertmanager:
+  enabled: false
+
+grafana:
+  adminPassword: admin  # lab only, reachable through port-forward on localhost
+  defaultDashboardsTimezone: America/Bogota
+
+prometheus:
+  prometheusSpec:
+    retention: 6h
+    resources:
+      requests:
+        cpu: 100m
+        memory: 400Mi
+      limits:
+        memory: 800Mi
+    storageSpec: {}
+
+# kind runs these control plane components on addresses Prometheus cannot reach.
+kubeEtcd:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeProxy:
+  enabled: false

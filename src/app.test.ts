@@ -36,6 +36,22 @@ test('creating a job without a body fails', async () => {
   assert.equal(res.statusCode, 400);
 });
 
+test('metrics count requests by route pattern and leave out /metrics itself', async () => {
+  const app = buildApp(new MemoryStore());
+  await app.inject({ method: 'GET', url: '/jobs' });
+  await app.inject({ method: 'POST', url: '/jobs' });
+  await app.inject({ method: 'GET', url: '/nope' });
+
+  const res = await app.inject({ method: 'GET', url: '/metrics' });
+  assert.equal(res.statusCode, 200);
+  assert.match(res.headers['content-type'] as string, /text\/plain/);
+  assert.match(res.body, /http_request_duration_seconds_count\{method="GET",route="\/jobs",status_code="200"\} 1/);
+  assert.match(res.body, /http_request_duration_seconds_count\{method="POST",route="\/jobs",status_code="400"\} 1/);
+  assert.match(res.body, /route="unmatched",status_code="404"/);
+  assert.doesNotMatch(res.body, /route="\/metrics"/);
+  assert.match(res.body, /process_cpu_user_seconds_total/);
+});
+
 test('a worker claims queued jobs one at a time', async () => {
   const store = new MemoryStore();
   await store.create({ a: 1 });
